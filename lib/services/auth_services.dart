@@ -37,8 +37,6 @@ class AuthService with ChangeNotifier {
     final res = await http.post(Uri.parse('${Enviroment.apiUrl}/login'),
         body: jsonEncode(data), headers: {'Content-Type': 'application/json'});
 
-    print(res.body);
-
     this.autenticando = false;
     if (res.statusCode == 200) {
       final loginResponse = loginResponseFromJson(res.body);
@@ -49,24 +47,40 @@ class AuthService with ChangeNotifier {
       return false;
   }
 
-  Future register<bool>(String name, String email, String password) async {
-    final data = {
-      'nombre' : name,
-      'email' : email,
-      'password' : password
-    };
-    
+  Future register(String name, String email, String password) async {
+    this.autenticando = true;
+    final data = {'nombre': name, 'email': email, 'password': password};
+
     final res = await http.post(Uri.parse('${Enviroment.apiUrl}/login/new'),
         body: jsonEncode(data), headers: {'Content-Type': 'application/json'});
 
-    print(res.body);
-     if (res.statusCode == 200) {
-     /*  final loginResponse = loginResponseFromJson(res.body);
+    this.autenticando = false;
+    if (res.statusCode == 200) {
+      final loginResponse = loginResponseFromJson(res.body);
       this.usuario = loginResponse.usuario;
-      this._guardarToken(loginResponse.token); */
+      this._guardarToken(loginResponse.token);
+      return true;
+    } else {
+      final resBody = jsonDecode(res.body);
+
+      return resBody['msg'];
+    }
+  }
+
+  Future isLoggeIn() async {
+    final token = await this._storage.read(key: 'token');
+
+    final res = await http.get(Uri.parse('${Enviroment.apiUrl}/login/renew'),
+        headers: {'Content-Type': 'application/json', 'x-token': token});
+
+    this.autenticando = false;
+    if (res.statusCode == 200) {
+      final loginResponse = loginResponseFromJson(res.body);
+      this.usuario = loginResponse.usuario;
+      this._guardarToken(loginResponse.token);
       return true;
     } else
-      return false;
+      this.logout();
   }
 
   Future _guardarToken(String token) async {
